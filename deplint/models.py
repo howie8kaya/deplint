@@ -1,4 +1,6 @@
-"""Core data models for deplint analysis results."""
+"""Data models for deplint issues and analysis results."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -12,47 +14,47 @@ class IssueSeverity(str, Enum):
 
 
 class IssueCode(str, Enum):
-    UNPINNED_DEPENDENCY = "DEP001"
-    DUPLICATE_DEPENDENCY = "DEP002"
-    CONFLICTING_VERSIONS = "DEP003"
-    OUTDATED_PINNED = "DEP004"
+    UNPINNED = "UNPINNED"
+    DUPLICATE = "DUPLICATE"
+    CONFLICT = "CONFLICT"
+    OUTDATED_PIN = "OUTDATED_PIN"
 
 
 @dataclass
 class Issue:
     code: IssueCode
     severity: IssueSeverity
-    message: str
     package: str
-    line_number: int = 0
-    suggestion: Optional[str] = None
+    message: str
+    line: Optional[int] = None
 
     def __str__(self) -> str:
-        loc = f"line {self.line_number}: " if self.line_number else ""
-        hint = f" ({self.suggestion})" if self.suggestion else ""
-        return f"[{self.severity.value.upper()}] {self.code.value} {loc}{self.message}{hint}"
+        location = f"line {self.line}: " if self.line is not None else ""
+        return f"[{self.severity.value.upper()}] {location}{self.code.value}: {self.message}"
 
 
 @dataclass
 class AnalysisResult:
-    filepath: str
     issues: list[Issue] = field(default_factory=list)
+    package_count: int = 0
+    source: str = ""
 
     @property
-    def errors(self) -> list[Issue]:
-        return [i for i in self.issues if i.severity == IssueSeverity.ERROR]
+    def has_errors(self) -> bool:
+        return any(i.severity == IssueSeverity.ERROR for i in self.issues)
 
     @property
-    def warnings(self) -> list[Issue]:
-        return [i for i in self.issues if i.severity == IssueSeverity.WARNING]
+    def has_warnings(self) -> bool:
+        return any(i.severity == IssueSeverity.WARNING for i in self.issues)
 
     @property
-    def has_issues(self) -> bool:
-        return len(self.issues) > 0
+    def error_count(self) -> int:
+        return sum(1 for i in self.issues if i.severity == IssueSeverity.ERROR)
 
-    def summary(self) -> str:
-        return (
-            f"{self.filepath}: "
-            f"{len(self.errors)} error(s), "
-            f"{len(self.warnings)} warning(s)"
-        )
+    @property
+    def warning_count(self) -> int:
+        return sum(1 for i in self.issues if i.severity == IssueSeverity.WARNING)
+
+    @property
+    def info_count(self) -> int:
+        return sum(1 for i in self.issues if i.severity == IssueSeverity.INFO)
