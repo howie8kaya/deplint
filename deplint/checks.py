@@ -74,4 +74,22 @@ def check_conflicts(requirements: list[Requirement]) -> list[Issue]:
     return issues
 
 
-ALL_CHECKS = [check_unpinned, check_duplicates, check_conflicts]
+def check_missing_version(requirements: list[Requirement]) -> list[Issue]:
+    """Flag dependencies that have no version specifier at all (bare package names)."""
+    issues = []
+    for req in requirements:
+        if req.version is None and not req.is_pinned():
+            issues.append(
+                Issue(
+                    code=IssueCode.UNPINNED_DEPENDENCY,
+                    severity=IssueSeverity.ERROR,
+                    message=f"'{req.name}' has no version specifier",
+                    package=req.name,
+                    line_number=req.line_number,
+                    suggestion=f"add a version specifier, e.g. {req.name}==<version>",
+                )
+            )
+    return issues
+
+
+ALL_CHECKS = [check_unpinned, check_duplicates, check_conflicts, check_missing_version]
